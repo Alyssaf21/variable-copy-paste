@@ -123,7 +123,7 @@ const setCollections = async () => { // Gets local Collections and Variables
   console.log("Running function setCollections...");
   await figma.clientStorage.setAsync("collections", cloneCollections(await figma.variables.getLocalVariableCollectionsAsync()));
   await figma.clientStorage.setAsync("variables", cloneVariables(await figma.variables.getLocalVariablesAsync()));
-  // Attempting to 
+  // Want to show name of file variables were copied from. Probably need to add it to local storage...
   parsedCollections = JSON.parse(await figma.clientStorage.getAsync("collections"));
   parsedVariables = JSON.parse(await figma.clientStorage.getAsync("variables"));
   console.log("setCollections Complete");
