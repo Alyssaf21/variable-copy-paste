@@ -1,0 +1,237 @@
+<style>
+  .flex-row {
+    display: flex;
+    flex-direction: row;
+  }
+
+  .flex-column {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .vert-margin-xs {
+    margin: 4px 0;
+  }
+
+  .vert-margin-sm {
+    margin: 8px 0;
+  }
+
+  .flex-gap-4 {
+    gap: 4px;
+  }
+
+  .flex-gap-8 {
+    gap: 8px;
+  }
+
+  #info {
+    color: var(--figma-color-text-secondary);
+    font-size: smaller;
+  }
+
+  #info>ul {
+    padding: 0 0 0 1em;
+    margin: 0;
+  }
+
+  #info>ul>li {
+    margin-bottom: 0.5em;
+  }
+
+  body {
+    font-family: "Inter", "Arial", sans-serif;
+    display: flex;
+    height: 90%;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+    background-color: var(--figma-color-bg);
+    color: var(--figma-color-text);
+  }
+
+  button {
+    min-height: 2em;
+    font-size: 1em;
+    width: fit-content;
+    padding: 12px 16px;
+    border-radius: 6px;
+    color: var(--figma-color-text);
+    background-color: var(--figma-color-bg);
+    border: none;
+    outline: 1px solid var(--figma-color-border-strong);
+  }
+
+  button:hover {
+    background-color: var(--figma-color-bg-secondary);
+    cursor: pointer;
+  }
+
+  .button-wrapper {
+    display: flex;
+    gap: 16px;
+    padding: 24px 0;
+  }
+
+  h2 {
+    margin: 0 0 0.4em;
+  }
+
+  .storage-container {
+    padding: 16px 0px;
+    flex-grow: 1;
+    gap: 0.75em;
+  }
+
+  .collection-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+    background-color: var(--figma-color-bg-secondary);
+    border: 2px solid var(--figma-color-border);
+    border-radius: 4px;
+  }
+
+  .collection-item>* {
+    margin: 0;
+  }
+
+  .collection-item>h4 {
+    font-weight: 500;
+  }
+
+  .collection-item>p {
+    color: var(--figma-color-text-secondary);
+    font-size: smaller;
+  }
+
+  .mode-separator {
+    display: inline;
+    color: var(--figma-color-border-brand);
+    padding: 0 0.5em;
+  }
+
+  .tertiary-button {
+    padding: 0;
+    outline: none;
+    color: var(--figma-color-text-brand)
+  }
+
+  a {
+    color: var(--figma-color-text-brand) !important;
+    text-decoration: none;
+  }
+
+  .tooltip {
+    position: relative;
+  }
+
+  .tooltip .tooltiptext {
+    visibility: hidden;
+    width: 160px;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px;
+    position: absolute;
+    z-index: 1;
+    top: 150%;
+    left: 50%;
+    margin-left: -83px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .tooltip .tooltiptext::after {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    transform: rotate(180deg);
+    border-color: #555 transparent transparent transparent;
+  }
+
+  .tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+  }
+</style>
+
+<h2>Variable Copy Paste</h2>
+<div id="info" class="flex-column">
+  <ul>
+    <li>Pasted variables may not appear in the original order (I don't know why this happens either 🤧)</li>
+    <li>Does not support aliases that link to external (non-local) libraries. Local aliases should work though.</li>
+    <li>Unsupported alias values found after pasting are shown in the <a
+        href="https://forum.figma.com/t/tutorial-how-to-open-console-in-figma/4570#desktop-app-1" target="_blank"
+        rel="noopener noreferrer" class="tooltip">console<span class="tooltiptext">How to open the console in
+          Figma ↗</span></a>, highlighted in pink.</li>
+  </ul>
+</div>
+<div id="storage" class="flex-column storage-container"></div>
+<div class="button-wrapper">
+  <button id="copy">Copy Variables</button>
+  <button id="paste">Paste</button>
+</div>
+
+<script>
+  const storage = document.getElementById("storage");
+  function reviver(key, value) { // Utility for un-stringifying Maps
+    if (typeof value === 'object' && value !== null) {
+      if (value.dataType === 'Map') {
+        return new Map(value.value);
+      }
+    }
+    return value;
+  }
+
+  function collectionContainer(collectionNames, collectionModes) { // Parses currently copied collection into HTML to show on plugin UI
+    // console.log("collectionContainer");
+    storage.innerHTML = "";
+    for (let h = 0; h < collectionNames.length; h++) {
+      const newDiv = document.createElement("div");
+      const newTitle = document.createElement("h4");
+      const newContent = document.createTextNode(collectionNames[h]);
+      newTitle.appendChild(newContent);
+      newDiv.appendChild(newTitle);
+      newDiv.classList.add("collection-item");
+      if (collectionModes[h]) {
+        const newBody = document.createElement("p");
+        for (let i = 0; i < collectionModes[h][1].length; i++) {
+          const newSubline = document.createTextNode(collectionModes[h][1][i]);
+          newBody.appendChild(newSubline);
+          if (i != (collectionModes[h][1].length - 1)) {
+            const separator = document.createTextNode("|");
+            const separatorWrapper = document.createElement("div");
+            separatorWrapper.classList.add("mode-separator");
+            separatorWrapper.appendChild(separator);
+            newBody.appendChild(separatorWrapper);
+          }
+        }
+        newDiv.appendChild(newBody);
+      }
+      storage.appendChild(newDiv);
+    }
+  }
+
+  document.getElementById('copy').onclick = () => {
+    parent.postMessage({ pluginMessage: { type: 'copy-collection' } }, '*')
+  }
+
+  document.getElementById('paste').onclick = () => {
+    parent.postMessage({ pluginMessage: { type: 'paste-collection' } }, '*');
+  }
+
+  onmessage = (event) => {
+    // console.log("got this from the plugin code", event.data.pluginMessage);
+    console.log("/////////////////// UI Refresh ///////////////////")
+    let colNames = JSON.parse(event.data.pluginMessage["names"]);
+    let colModes = JSON.parse(event.data.pluginMessage["modes"])["value"];
+    collectionContainer(colNames, colModes);
+  }
+</script>
