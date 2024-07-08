@@ -29,6 +29,52 @@ const printCurrentVariables = async () => {
   console.log(v);
 }
 
+const exportVariableCsv = async () => {
+  let c = JSON.parse(await figma.clientStorage.getAsync("collections"));
+  let v = JSON.parse(await figma.clientStorage.getAsync("variables"));
+  console.log("COLLECTIONS");
+  console.log(c);
+  console.log("VARIABLES:");
+  console.log(v);
+  let csvContentArray = [];
+  for (let i = 0; i < c.length; i++) {
+    for (let j = 0; j < v.length; j++) {
+      if (v[j].variableCollectionId == c[i].id) {
+        let modeKeys = Object.keys(c[i].modes);
+        for (let k = 0; k < modeKeys.length; k++) {
+          let varId = v[j].id.split("VariableID:")[1];
+          let colName = c[i].name;
+          let modeName = c[i]["modes"][k].name;
+          let groupName = "";
+          let varType = v[j].resolvedType;
+          let varName = v[j].name;
+          let varValue;
+          if (varName.includes("\/")) { // Detect groups in variable name and update groupName
+            groupName = varName.slice(0, varName.lastIndexOf("\/") + 1);
+            varName = varName.slice(varName.lastIndexOf("\/") + 1);
+          }
+          if (isAlias(v[j].valuesByMode[c[i].modes[k].modeId])) { // Format alias values for CSV
+            varValue = JSON.stringify(v[j].valuesByMode[c[i].modes[k].modeId]).replace(/{\"|\"}/g, "").replace(/\",\"/g, ", ").replace(/\":\"/g, ":");
+          }
+          else if (varType === "COLOR") { // Format color values for CSV
+            varValue = JSON.stringify(v[j].valuesByMode[c[i].modes[k].modeId]).replace("\"r\"", "r").replace("\"g\"", " g").replace("\"b\"", " b").replace("\"a\"", " a");
+          }
+          else { // Format everything else as-is
+            varValue = v[j].valuesByMode[c[i].modes[k].modeId];
+          }
+          let variableEntry = colName + "," + groupName + "," + varName + "," + varType + "," + modeName + ",\"" + varValue + "\"," + varId;
+          csvContentArray.push(variableEntry);
+        }
+      }
+    }
+  }
+  let finalString = csvContentArray.join("\n");
+  let csvHeader = "Collection, Group, Name, Type, Mode, Value, ID\n";
+  let encodedUri = csvHeader + finalString;
+  console.log(encodedUri);
+  figma.ui.postMessage({ type: 'csv', content: encodedUri });
+}
+
 function showInvalidAliases() { // Displaying invalid aliases (that reference non-local variables) in console with pink background
   console.log("%c" + "//// INVALID ALIASES ////", "color:#C20606; font-weight:bold; background:#FFE3E1;");
   for (let i = 0; i < invalidAliasList.length; i++) {
@@ -237,7 +283,7 @@ const myFontLoadingFunction = async () => {
 }
 
 myFontLoadingFunction().then(() => {
-  figma.showUI(__html__, { width: 400, height: 520, themeColors: true, title: "Variable Copy Paste" });
+  figma.showUI(__html__, { width: 420, height: 620, themeColors: true, title: "Variable Copy Paste" });
 })
 
 assignCopiedCollections();
@@ -252,11 +298,14 @@ figma.ui.onmessage = (msg: { type: string }) => {
     console.log("PASTE COLLECTION");
     assignCopiedCollections().then(() => {
       createVariables(parsedCollections, parsedVariables);
-      // getAliasedVariables(variableAliases).then(() => figma.notify('Pasted variables & collections', { timeout: 4000, error: false }));
       showInvalidAliases();
       figma.notify('Pasted variables & collections', { timeout: 4000, error: false });
     });
     printCurrentVariables();
+  }
+  else if (msg.type === 'export-collection') {
+    exportVariableCsv();
+    figma.notify('Exported variables & collections as CSV', { timeout: 4000, error: false });
   }
   figma.commitUndo();
 };
