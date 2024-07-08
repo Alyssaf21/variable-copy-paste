@@ -39,6 +39,10 @@
     margin-bottom: 0.5em;
   }
 
+  #export-link {
+    padding: 0 0 2em;
+  }
+
   body {
     font-family: "Inter", "Arial", sans-serif;
     display: flex;
@@ -71,6 +75,10 @@
     display: flex;
     gap: 16px;
     padding: 24px 0;
+  }
+
+  .button-wrapper>.flex-row {
+    gap: 16px;
   }
 
   h2 {
@@ -174,9 +182,14 @@
   </ul>
 </div>
 <div id="storage" class="flex-column storage-container"></div>
-<div class="button-wrapper">
-  <button id="copy">Copy Variables</button>
-  <button id="paste">Paste</button>
+<div class="button-wrapper flex-column">
+  <div class="flex-row">
+    <button id="copy">Copy Variables</button>
+    <button id="paste">Paste</button>
+  </div>
+  <button id="export">Export CSV</button>
+</div>
+<div id="export-link" class="flex-row">
 </div>
 
 <script>
@@ -191,7 +204,6 @@
   }
 
   function collectionContainer(collectionNames, collectionModes) { // Parses currently copied collection into HTML to show on plugin UI
-    // console.log("collectionContainer");
     storage.innerHTML = "";
     for (let h = 0; h < collectionNames.length; h++) {
       const newDiv = document.createElement("div");
@@ -219,19 +231,42 @@
     }
   }
 
+  function addExportLink(csvLink) {
+    const linkContainer = document.getElementById("export-link");
+    linkContainer.innerHTML = '';
+    const linkAddress = document.createElement("a");
+    linkAddress.href = csvLink;
+    linkAddress.download = 'Variables.csv';
+    const linkText = document.createTextNode("Download CSV");
+    linkAddress.appendChild(linkText);
+    linkContainer.appendChild(linkAddress);
+  }
+
   document.getElementById('copy').onclick = () => {
-    parent.postMessage({ pluginMessage: { type: 'copy-collection' } }, '*')
+    parent.postMessage({ pluginMessage: { type: 'copy-collection' } }, '*');
   }
 
   document.getElementById('paste').onclick = () => {
     parent.postMessage({ pluginMessage: { type: 'paste-collection' } }, '*');
   }
 
+  document.getElementById('export').onclick = () => {
+    parent.postMessage({ pluginMessage: { type: 'export-collection' } }, '*');
+  }
+
   onmessage = (event) => {
-    // console.log("got this from the plugin code", event.data.pluginMessage);
     console.log("/////////////////// UI Refresh ///////////////////")
-    let colNames = JSON.parse(event.data.pluginMessage["names"]);
-    let colModes = JSON.parse(event.data.pluginMessage["modes"])["value"];
-    collectionContainer(colNames, colModes);
+    if (event.data.pluginMessage.type === 'collection-names') {
+      let colNames = JSON.parse(event.data.pluginMessage["names"]);
+      let colModes = JSON.parse(event.data.pluginMessage["modes"])["value"];
+      collectionContainer(colNames, colModes);
+    }
+    if (event.data.pluginMessage.type === 'csv') {
+      let csvContent = event.data.pluginMessage.content;
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8,' })
+      const objUrl = URL.createObjectURL(blob);
+      window.open(csvContent, '_blank');
+      addExportLink(objUrl);
+    }
   }
 </script>
