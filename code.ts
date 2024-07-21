@@ -177,9 +177,6 @@ const setCollections = async () => { // Gets local Collections and Variables
   await figma.clientStorage.setAsync("collections", localVariableCollections);
   await figma.clientStorage.setAsync("variables", localVariables);
 
-  console.log(`localVariableCollections = ${localVariableCollections}`);
-  console.log(`localVariables = ${localVariables}`);
-
   // Want to show name of file variables were copied from. Probably need to add it to local storage...
   parsedCollections = JSON.parse(await figma.clientStorage.getAsync("collections"));
   parsedVariables = JSON.parse(await figma.clientStorage.getAsync("variables"));
@@ -244,52 +241,88 @@ function remapAliases(arr: any, map: Map<String, Variable>) { // takes an array 
   return arr;
 }
 
-function createVariables(sourceCollections: VariableCollection[], variables: Variable[]) {
-  console.log("Running function CreateVariables...");
-  var aliasedVariables = [];
+/**
+ * Copy source collections/variables to the current file
+ * 
+ * @param sourceCollections Source list of VariableCollection
+ * @param sourceVariables 
+ */
+function createVariables(sourceCollections: VariableCollection[], sourceVariables: Variable[]) {
+  var aliasedVariables: Variable[] = [];
   const aliasMap = new Map();
 
-  for (let i = 0; i < sourceCollections.length; i++) { // Iterates through and creates collections
-    const sourceCollection = sourceCollections[i];
-    console.log("Creating Collection: " + sourceCollection["name"] + " -------------");
+  sourceCollections.forEach(sourceCollection => {
+    console.log("Creating a new collection: " + sourceCollection.name + " -------------");
 
     // Create an empty collection with the same name as sourceCollection
-    const newCollection = figma.variables.createVariableCollection(sourceCollection["name"]);
+    const newCollection = figma.variables.createVariableCollection(sourceCollection.name);
 
-    for (let j = 0; j < sourceCollection["modes"].length; j++) { // Adds modes to created collections
-      if (j == 0) { newCollection.renameMode(newCollection.modes[0].modeId, sourceCollection["modes"][j]["name"]); }
-      else { newCollection.addMode(sourceCollection["modes"][j]["name"]); }
+    // When copying modes from one collection to another, the new modes will get different IDs
+    // Need this mapping so we can later iterate through the old mode IDs while setting values
+    // for the new mode IDs
+    const modeMap: { [sourceModeId: string]: string } = {};
+    for (let sourceModeIndex = 0; sourceModeIndex < sourceCollection.modes.length; sourceModeIndex++) {
+      const sourceMode = sourceCollection.modes[sourceModeIndex];
+
+      // A new collection has a default mode and it can't be removed. So rename instead of add
+      if (sourceModeIndex == 0) {
+        const newCollectionModeId = newCollection.modes[0].modeId;
+        newCollection.renameMode(newCollectionModeId, sourceMode.name);
+        modeMap[sourceMode.modeId] = newCollectionModeId;
+        continue
+      }
+      
+      const newModeId = newCollection.addMode(sourceMode.name);
+      modeMap[sourceMode.modeId] = newModeId;
+      continue;
     }
 
     // Copy variables from sourceCollection to newCollection
-    for (let h = 0; h < variables.length; h++) { // Iterates through and creates variables
-      let variable = variables[h];
-      
-      if (sourceCollection["id"] == variable["variableCollectionId"]) {
-        const createdVariable = figma.variables.createVariable(variable["name"], newCollection, variable["resolvedType"]);
-        aliasMap.set(variable['id'], createdVariable);
-        var keys = Object.keys(createdVariable.valuesByMode);
-        for (let j = 0; j < sourceCollection.modes.length; j++) { // For each variable, iterate through modes
-          let currentModeId = sourceCollection.modes[j].modeId;
-          let currentModeValue = variable["valuesByMode"][currentModeId];
-          if (isAlias(currentModeValue) != false) {
-            if (aliasedVariables.length <= 0 || (h > 0 && aliasedVariables[aliasedVariables.length - 1]["id"] != variable["id"])) {
-              aliasedVariables.push(variable); // if value is an alias, give it a hard-coded default value and add to array for later assignment
-            }
-            let varType = variable.resolvedType;
-            switch (varType) { // Setting all aliased values to a default until we can go back and add their referenced values
-              case 'BOOLEAN': createdVariable.setValueForMode(keys[j], false); console.log("Set BOOL to FALSE"); break;
-              case 'COLOR': createdVariable.setValueForMode(keys[j], { r: 0, g: 0, b: 0, a: 1 }); console.log("Set COLOR to BLACK"); break;
-              case 'FLOAT': createdVariable.setValueForMode(keys[j], 0); console.log("Set FLOAT to 0"); break;
-              case 'STRING': createdVariable.setValueForMode(keys[j], "String Value --"); console.log("Set STRING to STRING VALUE --"); break;
-              default: createdVariable.setValueForMode(keys[j], ""); break;
-            }
-          }
-          else { createdVariable.setValueForMode(keys[j], currentModeValue) }
+    sourceCollection.variableIds.forEach(sourceVariableId => {
+      // tempUserVariable is to unwrap Variable || undefined to Variable
+      let tempSourceVariable = sourceVariables.find(sourceVariable => sourceVariable.id === sourceVariableId);
+      let sourceVariable: Variable;
+
+      if (tempSourceVariable === undefined) {
+        console.log("%c" + `No user variable found with id ${sourceVariableId}. This is an error condition`, "color:#C20606; font-weight:bold; background:#FFE3E1;");
+        return;
+      } else {
+        sourceVariable = tempSourceVariable
+      }
+
+      // Add an empty variable to the new collection
+      const createdVariable = figma.variables.createVariable(sourceVariable.name, newCollection, sourceVariable.resolvedType);
+
+      // Store variable so we can later resolve alias values
+      aliasMap.set(sourceVariable.id, createdVariable);
+
+      // Fill the empty variable with mode values
+      sourceCollection.modes.map(mode => mode.modeId).forEach(sourceModeId => {
+        let sourceModeValue = sourceVariable.valuesByMode[sourceModeId];
+
+        const newModeId = modeMap[sourceModeId];
+
+        // If sourceModValue isn't alias, just set the value and return
+        if (isAlias(sourceModeValue) == false) {
+          createdVariable.setValueForMode(newModeId, sourceModeValue);
+          return
+        }
+
+        // Source variable uses aliases for its values. Add to aliasedVariables array and assign the right values
+        aliasedVariables.push(sourceVariable);
+        let varType = sourceVariable.resolvedType;
+        switch (varType) { // Setting all aliased values to a default until we can go back and add their referenced values
+          case 'BOOLEAN': createdVariable.setValueForMode(newModeId, false); break;
+          case 'COLOR': createdVariable.setValueForMode(newModeId, { r: 0, g: 0, b: 0, a: 1 }); break;
+          case 'FLOAT': createdVariable.setValueForMode(newModeId, 0); break;
+          case 'STRING': createdVariable.setValueForMode(newModeId, "String Value --"); break;
+          default: createdVariable.setValueForMode(newModeId, ""); break;
         }
       }
-    }
-  }
+      )
+    })
+  })
+
   if (aliasedVariables.length > 0) {
     aliasedVariables = remapAliases(aliasedVariables, aliasMap);
     console.log("aliasedVariables");
