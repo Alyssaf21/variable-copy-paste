@@ -250,21 +250,22 @@ function createVariables(sourceCollections: VariableCollection[], variables: Var
   const aliasMap = new Map();
 
   for (let i = 0; i < sourceCollections.length; i++) { // Iterates through and creates collections
-    console.log("Creating Collection: " + sourceCollections[i]["name"] + " -------------");
-    const collection = figma.variables.createVariableCollection(sourceCollections[i]["name"]);
-    
-    for (let j = 0; j < sourceCollections[i]["modes"].length; j++) { // Adds modes to created collections
-      if (j == 0) { collection.renameMode(collection.modes[0].modeId, sourceCollections[i]["modes"][j]["name"]); }
-      else { collection.addMode(sourceCollections[i]["modes"][j]["name"]); }
+    const sourceCollection = sourceCollections[i];
+    console.log("Creating Collection: " + sourceCollection["name"] + " -------------");
+    const collection = figma.variables.createVariableCollection(sourceCollection["name"]);
+
+    for (let j = 0; j < sourceCollection["modes"].length; j++) { // Adds modes to created collections
+      if (j == 0) { collection.renameMode(collection.modes[0].modeId, sourceCollection["modes"][j]["name"]); }
+      else { collection.addMode(sourceCollection["modes"][j]["name"]); }
     }
 
     for (let h = 0; h < variables.length; h++) { // Iterates through and creates variables
-      if (sourceCollections[i]["id"] == variables[h]["variableCollectionId"]) {
+      if (sourceCollection["id"] == variables[h]["variableCollectionId"]) {
         const createdVariable = figma.variables.createVariable(variables[h]["name"], collection, variables[h]["resolvedType"]);
         aliasMap.set(variables[h]['id'], createdVariable);
         var keys = Object.keys(createdVariable.valuesByMode);
-        for (let j = 0; j < sourceCollections[i].modes.length; j++) { // For each variable, iterate through modes
-          let currentModeId = sourceCollections[i].modes[j].modeId;
+        for (let j = 0; j < sourceCollection.modes.length; j++) { // For each variable, iterate through modes
+          let currentModeId = sourceCollection.modes[j].modeId;
           let currentModeValue = variables[h]["valuesByMode"][currentModeId];
           if (isAlias(currentModeValue) != false) {
             if (aliasedVariables.length <= 0 || (h > 0 && aliasedVariables[aliasedVariables.length - 1]["id"] != variables[h]["id"])) {
