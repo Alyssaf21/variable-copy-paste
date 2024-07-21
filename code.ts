@@ -252,26 +252,31 @@ function createVariables(sourceCollections: VariableCollection[], variables: Var
   for (let i = 0; i < sourceCollections.length; i++) { // Iterates through and creates collections
     const sourceCollection = sourceCollections[i];
     console.log("Creating Collection: " + sourceCollection["name"] + " -------------");
-    const collection = figma.variables.createVariableCollection(sourceCollection["name"]);
+
+    // Create an empty collection with the same name as sourceCollection
+    const newCollection = figma.variables.createVariableCollection(sourceCollection["name"]);
 
     for (let j = 0; j < sourceCollection["modes"].length; j++) { // Adds modes to created collections
-      if (j == 0) { collection.renameMode(collection.modes[0].modeId, sourceCollection["modes"][j]["name"]); }
-      else { collection.addMode(sourceCollection["modes"][j]["name"]); }
+      if (j == 0) { newCollection.renameMode(newCollection.modes[0].modeId, sourceCollection["modes"][j]["name"]); }
+      else { newCollection.addMode(sourceCollection["modes"][j]["name"]); }
     }
 
+    // Copy variables from sourceCollection to newCollection
     for (let h = 0; h < variables.length; h++) { // Iterates through and creates variables
-      if (sourceCollection["id"] == variables[h]["variableCollectionId"]) {
-        const createdVariable = figma.variables.createVariable(variables[h]["name"], collection, variables[h]["resolvedType"]);
-        aliasMap.set(variables[h]['id'], createdVariable);
+      let variable = variables[h];
+      
+      if (sourceCollection["id"] == variable["variableCollectionId"]) {
+        const createdVariable = figma.variables.createVariable(variable["name"], newCollection, variable["resolvedType"]);
+        aliasMap.set(variable['id'], createdVariable);
         var keys = Object.keys(createdVariable.valuesByMode);
         for (let j = 0; j < sourceCollection.modes.length; j++) { // For each variable, iterate through modes
           let currentModeId = sourceCollection.modes[j].modeId;
-          let currentModeValue = variables[h]["valuesByMode"][currentModeId];
+          let currentModeValue = variable["valuesByMode"][currentModeId];
           if (isAlias(currentModeValue) != false) {
-            if (aliasedVariables.length <= 0 || (h > 0 && aliasedVariables[aliasedVariables.length - 1]["id"] != variables[h]["id"])) {
-              aliasedVariables.push(variables[h]); // if value is an alias, give it a hard-coded default value and add to array for later assignment
+            if (aliasedVariables.length <= 0 || (h > 0 && aliasedVariables[aliasedVariables.length - 1]["id"] != variable["id"])) {
+              aliasedVariables.push(variable); // if value is an alias, give it a hard-coded default value and add to array for later assignment
             }
-            let varType = variables[h].resolvedType;
+            let varType = variable.resolvedType;
             switch (varType) { // Setting all aliased values to a default until we can go back and add their referenced values
               case 'BOOLEAN': createdVariable.setValueForMode(keys[j], false); console.log("Set BOOL to FALSE"); break;
               case 'COLOR': createdVariable.setValueForMode(keys[j], { r: 0, g: 0, b: 0, a: 1 }); console.log("Set COLOR to BLACK"); break;
