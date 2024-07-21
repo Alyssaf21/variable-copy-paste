@@ -76,6 +76,9 @@ const exportVariableCsv = async () => {
 }
 
 function showInvalidAliases() { // Displaying invalid aliases (that reference non-local variables) in console with pink background
+  // If there's no invalid alias, return
+  if (invalidAliasList.length <= 0) { return };
+
   console.log("%c" + "//// INVALID ALIASES ////", "color:#C20606; font-weight:bold; background:#FFE3E1;");
   for (let i = 0; i < invalidAliasList.length; i++) {
     let collectionName = invalidAliasList[i].split(" ..... ")[0];
@@ -134,7 +137,7 @@ function cloneVariables(v: Variable[]) { // Workaround for stringifying the Vari
       valuesByMode: v[i]["valuesByMode"],
       variableCollectionId: v[i]["variableCollectionId"]
     };
-    console.log("New Var Namne: " + Variable.name)
+    console.log("New Var Name: " + Variable.name)
     clonedArray.push(Variable);
   }
   return JSON.stringify(clonedArray);
@@ -166,9 +169,17 @@ const assignCopiedCollections = async () => { // Gets collections and variables 
 }
 
 const setCollections = async () => { // Gets local Collections and Variables
-  console.log("Running function setCollections...");
-  await figma.clientStorage.setAsync("collections", cloneCollections(await figma.variables.getLocalVariableCollectionsAsync()));
-  await figma.clientStorage.setAsync("variables", cloneVariables(await figma.variables.getLocalVariablesAsync()));
+  console.log("Saving current local variable collections to storage...");
+
+  const localVariableCollections = cloneCollections(await figma.variables.getLocalVariableCollectionsAsync());
+  const localVariables = cloneVariables(await figma.variables.getLocalVariablesAsync())
+
+  await figma.clientStorage.setAsync("collections", localVariableCollections);
+  await figma.clientStorage.setAsync("variables", localVariables);
+
+  console.log(`localVariableCollections = ${localVariableCollections}`);
+  console.log(`localVariables = ${localVariables}`);
+
   // Want to show name of file variables were copied from. Probably need to add it to local storage...
   parsedCollections = JSON.parse(await figma.clientStorage.getAsync("collections"));
   parsedVariables = JSON.parse(await figma.clientStorage.getAsync("variables"));
@@ -246,9 +257,9 @@ function createVariables(c: VariableCollection[], v: Variable[]) {
     }
     for (let h = 0; h < v.length; h++) { // Iterates through and creates variables
       if (c[i]["id"] == v[h]["variableCollectionId"]) {
-        const variable = figma.variables.createVariable(v[h]["name"], collection, v[h]["resolvedType"]);
-        aliasMap.set(v[h]['id'], variable);
-        var keys = Object.keys(variable.valuesByMode);
+        const createdVariable = figma.variables.createVariable(v[h]["name"], collection, v[h]["resolvedType"]);
+        aliasMap.set(v[h]['id'], createdVariable);
+        var keys = Object.keys(createdVariable.valuesByMode);
         for (let j = 0; j < c[i].modes.length; j++) { // For each variable, iterate through modes
           let currentModeId = c[i].modes[j].modeId;
           let currentModeValue = v[h]["valuesByMode"][currentModeId];
@@ -258,14 +269,14 @@ function createVariables(c: VariableCollection[], v: Variable[]) {
             }
             let varType = v[h].resolvedType;
             switch (varType) { // Setting all aliased values to a default until we can go back and add their referenced values
-              case 'BOOLEAN': variable.setValueForMode(keys[j], false); console.log("Set BOOL to FALSE"); break;
-              case 'COLOR': variable.setValueForMode(keys[j], { r: 0, g: 0, b: 0, a: 1 }); console.log("Set COLOR to BLACK"); break;
-              case 'FLOAT': variable.setValueForMode(keys[j], 0); console.log("Set FLOAT to 0"); break;
-              case 'STRING': variable.setValueForMode(keys[j], "String Value --"); console.log("Set STRING to STRING VALUE --"); break;
-              default: variable.setValueForMode(keys[j], ""); break;
+              case 'BOOLEAN': createdVariable.setValueForMode(keys[j], false); console.log("Set BOOL to FALSE"); break;
+              case 'COLOR': createdVariable.setValueForMode(keys[j], { r: 0, g: 0, b: 0, a: 1 }); console.log("Set COLOR to BLACK"); break;
+              case 'FLOAT': createdVariable.setValueForMode(keys[j], 0); console.log("Set FLOAT to 0"); break;
+              case 'STRING': createdVariable.setValueForMode(keys[j], "String Value --"); console.log("Set STRING to STRING VALUE --"); break;
+              default: createdVariable.setValueForMode(keys[j], ""); break;
             }
           }
-          else { variable.setValueForMode(keys[j], currentModeValue) }
+          else { createdVariable.setValueForMode(keys[j], currentModeValue) }
         }
       }
     }
