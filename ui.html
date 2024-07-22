@@ -39,14 +39,11 @@
     margin-bottom: 0.5em;
   }
 
-  #export-link {
-    padding: 0 0 2em;
-  }
-
   body {
     font-family: "Inter", "Arial", sans-serif;
     display: flex;
     height: 90%;
+    gap: 16px;
     flex-direction: column;
     align-items: stretch;
     padding: 12px;
@@ -58,7 +55,7 @@
     min-height: 2em;
     font-size: 1em;
     width: fit-content;
-    padding: 12px 16px;
+    padding: 0.5em 0.6em;
     border-radius: 6px;
     color: var(--figma-color-text);
     background-color: var(--figma-color-bg);
@@ -74,7 +71,6 @@
   .button-wrapper {
     display: flex;
     gap: 16px;
-    padding: 24px 0;
   }
 
   .button-wrapper>.flex-row {
@@ -85,9 +81,12 @@
     margin: 0 0 0.4em;
   }
 
+  h4, h5 {
+    margin: 0;
+    font-weight: 500;
+  }
+
   .storage-container {
-    padding: 16px 0px;
-    flex-grow: 1;
     gap: 0.75em;
   }
 
@@ -131,6 +130,11 @@
     text-decoration: none;
   }
 
+  hr {
+    margin: 0;
+    border: 1px solid var(--figma-color-border);
+  }
+
   .tooltip {
     position: relative;
   }
@@ -168,9 +172,38 @@
     visibility: visible;
     opacity: 1;
   }
+
+  .checkbox-wrapper {
+    align-items: center;
+    gap: 0.25em;
+  }
+
+  .checkbox-wrapper>label {
+    font-size: smaller;
+    color: var(--figma-color-text-secondary);
+  }
 </style>
 
 <h2>Variable Copy Paste</h2>
+<div class="button-wrapper flex-column">
+  <div class="flex-row">
+    <button id="copy">Copy Variables</button>
+    <button id="paste">Paste</button>
+  </div>
+  <div class="flex-row">
+    <button id="export">Export CSV</button>
+    <div class="flex-row checkbox-wrapper">
+      <label for="hex">
+        <input type="checkbox" id="hex" name="hex" checked="checked">
+        Export colors as hex values</label>
+    </div>
+  </div>
+  <div id="export-link" class="flex-row">
+  </div>
+</div>
+<hr>
+<h4> Variable Collections </h4>
+<div id="storage" class="flex-column storage-container"></div>
 <div id="info" class="flex-column">
   <ul>
     <li>Pasted variables may not appear in the original order (I don't know why this happens either 🤧)</li>
@@ -180,16 +213,6 @@
         rel="noopener noreferrer" class="tooltip">console<span class="tooltiptext">How to open the console in
           Figma ↗</span></a>, highlighted in pink.</li>
   </ul>
-</div>
-<div id="storage" class="flex-column storage-container"></div>
-<div class="button-wrapper flex-column">
-  <div class="flex-row">
-    <button id="copy">Copy Variables</button>
-    <button id="paste">Paste</button>
-  </div>
-  <button id="export">Export CSV</button>
-</div>
-<div id="export-link" class="flex-row">
 </div>
 
 <script>
@@ -207,7 +230,7 @@
     storage.innerHTML = "";
     for (let h = 0; h < collectionNames.length; h++) {
       const newDiv = document.createElement("div");
-      const newTitle = document.createElement("h4");
+      const newTitle = document.createElement("h5");
       const newContent = document.createTextNode(collectionNames[h]);
       newTitle.appendChild(newContent);
       newDiv.appendChild(newTitle);
@@ -251,7 +274,12 @@
   }
 
   document.getElementById('export').onclick = () => {
-    parent.postMessage({ pluginMessage: { type: 'export-collection' } }, '*');
+    parent.postMessage({ pluginMessage: { type: 'export-collection', value: document.getElementById('hex').checked } }, '*');
+  }
+
+  document.getElementById('hex').onclick = () => {
+    console.log("Clicked, new value = " + document.getElementById('hex').checked)
+    parent.postMessage({ pluginMessage: { type: 'use-hex', value: document.getElementById('hex').checked } }, '*');
   }
 
   onmessage = (event) => {

@@ -20,6 +20,8 @@ var parsedVariables: any;
 var variableAliases: any;
 var invalidAliasList: string[] = [];
 
+var useHex: boolean;
+
 const printCurrentVariables = async () => {
   let c = JSON.parse(await figma.clientStorage.getAsync("collections"));
   let v = JSON.parse(await figma.clientStorage.getAsync("variables"));
@@ -29,7 +31,23 @@ const printCurrentVariables = async () => {
   console.log(v);
 }
 
+function rgbToHex(rgb: any) { // Converts figma rgb values to Hex
+  let value = rgb;
+  let r = Math.round(value["r"] * 255).toString(16);
+  r = r.length == 1 ? "0" + r : r;
+  let g = Math.round(value["g"] * 255).toString(16);
+  g = g.length == 1 ? "0" + g : g;
+  let b = Math.round(value["b"] * 255).toString(16);
+  b = b.length == 1 ? "0" + b : b;
+  let a = Math.round(value["a"] * 255).toString(16);
+  a = a.length == 1 ? "0" + a : a;
+  let hex = r + g + b + a;
+  // let hex = r + g + b; // No opacity value
+  return hex;
+}
+
 const exportVariableCsv = async () => {
+  console.log(useHex);
   let c = JSON.parse(await figma.clientStorage.getAsync("collections"));
   let v = JSON.parse(await figma.clientStorage.getAsync("variables"));
   console.log("COLLECTIONS");
@@ -57,7 +75,11 @@ const exportVariableCsv = async () => {
             varValue = JSON.stringify(v[j].valuesByMode[c[i].modes[k].modeId]).replace(/{\"|\"}/g, "").replace(/\",\"/g, ", ").replace(/\":\"/g, ":");
           }
           else if (varType === "COLOR") { // Format color values for CSV
-            varValue = JSON.stringify(v[j].valuesByMode[c[i].modes[k].modeId]).replace("\"r\"", "r").replace("\"g\"", " g").replace("\"b\"", " b").replace("\"a\"", " a");
+            if (useHex == true) {
+              varValue = rgbToHex(v[j].valuesByMode[c[i].modes[k].modeId]);
+            } else {
+              varValue = JSON.stringify(v[j].valuesByMode[c[i].modes[k].modeId]).replace("\"r\"", "r").replace("\"g\"", " g").replace("\"b\"", " b").replace("\"a\"", " a");
+            }
           }
           else { // Format everything else as-is
             varValue = v[j].valuesByMode[c[i].modes[k].modeId];
@@ -283,13 +305,13 @@ const myFontLoadingFunction = async () => {
 }
 
 myFontLoadingFunction().then(() => {
-  figma.showUI(__html__, { width: 420, height: 620, themeColors: true, title: "Variable Copy Paste" });
+  figma.showUI(__html__, { width: 420, height: 640, themeColors: true, title: "Variable Copy Paste" });
 })
 
 assignCopiedCollections();
 setInterval(async function () { assignCopiedCollections() }, 3000);
 
-figma.ui.onmessage = (msg: { type: string }) => {
+figma.ui.onmessage = (msg: { type: string, value: boolean }) => {
   if (msg.type === 'copy-collection') {
     setCollections().then(() => assignCopiedCollections());
     figma.notify('Copied variables & collections', { timeout: 4000, error: false });
@@ -304,8 +326,14 @@ figma.ui.onmessage = (msg: { type: string }) => {
     printCurrentVariables();
   }
   else if (msg.type === 'export-collection') {
+    useHex = msg.value;
     exportVariableCsv();
+    rgbToHex({ r: 0.8980392217636108, g: 0.3686274588108063, b: 0.7960784435272217, a: 1 });
     figma.notify('Exported variables & collections as CSV', { timeout: 4000, error: false });
+  }
+  else if (msg.type === 'use-hex') {
+    console.log(msg.value)
+    useHex = msg.value;
   }
   figma.commitUndo();
 };
