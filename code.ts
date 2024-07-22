@@ -381,11 +381,9 @@ figma.ui.onmessage = (msg: { type: string, value: boolean }) => {
   else if (msg.type === 'export-collection') {
     useHex = msg.value;
     exportVariableCsv();
-    rgbToHex({ r: 0.8980392217636108, g: 0.3686274588108063, b: 0.7960784435272217, a: 1 });
     figma.notify('Exported variables & collections as CSV', { timeout: 4000, error: false });
   }
   else if (msg.type === 'use-hex') {
-    console.log(msg.value)
     useHex = msg.value;
   }
   figma.commitUndo();
