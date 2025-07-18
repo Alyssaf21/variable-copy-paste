@@ -1,40 +1,19 @@
-Below are the steps to get your plugin running. You can also find instructions at:
+<img width="800" alt="Variable Copy Paste Export Banner" src="https://github.com/user-attachments/assets/0228e074-9a14-4f22-b290-1b724fb2683d" />
+<br>
 
-  https://www.figma.com/plugin-docs/plugin-quickstart-guide/
+### Copy, paste, and export Figma Variables into CSV format!
+Simple plugin that copies and pastes variables between files. Copied variables can also be exported into a downloadable CSV file.  
+[View in Figma Community](https://www.figma.com/community/plugin/1519396399925531267/variable-copy-paste-export)
 
-This plugin template uses Typescript and NPM, two standard tools in creating JavaScript applications.
+**HOW TO USE**:
+- Open the plugin and hit "Copy Variables". The copied collections and modes should then appear in the plugin UI.
+- Go to the file you want to paste to, open the plugin and hit "Paste".
+- Double-check that the pasted variables match the original. Sometimes they get pasted out of order.
+- Copied variables can also be exported by hitting "Export" and then clicking on the "Download CSV" link that appears underneath.
 
-First, download Node.js which comes with NPM. This will allow you to install TypeScript and other
-libraries. You can find the download link here:
+---
 
-  https://nodejs.org/en/download/
+⚠️ **PLEASE NOTE: Aliases that reference external (non-local) variables will not work** and will be shown in the console if found.  
+Also, pasted variables may not always end up in their original order- I am not a dev and don't know why this happens (if anyone can help, please do 🥲)  
 
-Next, install TypeScript using the command:
-
-  npm install -g typescript
-
-Finally, in the directory of your plugin, get the latest type definitions for the plugin API by running:
-
-  npm install --save-dev @figma/plugin-typings
-
-If you are familiar with JavaScript, TypeScript will look very familiar. In fact, valid JavaScript code
-is already valid Typescript code.
-
-TypeScript adds type annotations to variables. This allows code editors such as Visual Studio Code
-to provide information about the Figma API while you are writing code, as well as help catch bugs
-you previously didn't notice.
-
-For more information, visit https://www.typescriptlang.org/
-
-Using TypeScript requires a compiler to convert TypeScript (code.ts) into JavaScript (code.js)
-for the browser to run.
-
-We recommend writing TypeScript code using Visual Studio code:
-
-1. Download Visual Studio Code if you haven't already: https://code.visualstudio.com/.
-2. Open this directory in Visual Studio Code.
-3. Compile TypeScript to JavaScript: Run the "Terminal > Run Build Task..." menu item,
-    then select "npm: watch". You will have to do this again every time
-    you reopen Visual Studio Code.
-
-That's it! Visual Studio Code will regenerate the JavaScript file every time you save.
+If you have any thoughts/suggestions/feedback, I'd love to chat! You can reach me at a.c.fusato@gmail.com
