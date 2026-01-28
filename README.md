@@ -16,4 +16,10 @@ Simple plugin that copies and pastes variables between files. Copied variables c
 ⚠️ **PLEASE NOTE: Aliases that reference external (non-local) variables will not work** and will be shown in the console if found.  
 Also, pasted variables may not always end up in their original order- I am not a dev and don't know why this happens (if anyone can help, please do 🥲)  
 
+**LOCAL ALIASES IN SPREADSHEETS:** ⚠️ Google Sheets may apply a number format on the ID column that changes their value, so please watch out for that. This doesn't seem to be an issue in Excel.
+**To display variable aliases as links in a spreadsheet**, create a new "Alias" column (H) after ID (G) and for its value, apply the following formula to its cells: 
+`=IFNA(HYPERLINK("#"&CELL("address",INDEX(F:F,MATCH(TEXTAFTER(F2,"type:VARIABLE_ALIAS, id:VariableID:"),G:G,0))),CONCAT(B2,C2)), "")`
+
+☕ Like the plugin? Say thanks with a coffee! :D [https://ko-fi.com/alyssaf](https://ko-fi.com/alyssaf)
+
 If you have any thoughts/suggestions/feedback, I'd love to chat! You can reach me at a.c.fusato@gmail.com
